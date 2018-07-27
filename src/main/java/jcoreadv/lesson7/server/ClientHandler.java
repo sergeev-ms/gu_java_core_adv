@@ -21,7 +21,6 @@ public class ClientHandler {
     private static final String nickIsBusyMessage = "Учетная запись уже используется";
     private static final String incorrectAuthPairMessage = "Неверные логин/пароль";
     private boolean isAuthorize = false;
-    private Thread mainThread;
     private static final int SECONDS_TO_WAIT_AUTH = 20;
 
     public String getName() {
