@@ -38,7 +38,7 @@ public class MyServer {
                 System.out.println("Сервер ожидает подключения");
                 socket = server.accept();
                 System.out.println("Клиент подключился");
-                new ClientHandler(this);
+                new ClientHandler(this, socket);
             }
         } catch (IOException e) {
             System.out.println("Ошибка при работе сервера");

@@ -20,18 +20,42 @@ public class ClientHandler {
     private static String userLeaveChatNotification = "%s вышел из чата";
     private static final String nickIsBusyMessage = "Учетная запись уже используется";
     private static final String incorrectAuthPairMessage = "Неверные логин/пароль";
+    private boolean isAuthorize = false;
+    private Thread mainThread;
+    private static final int SECONDS_TO_WAIT_AUTH = 20;
 
     public String getName() {
         return name;
     }
 
-    public ClientHandler(MyServer myServer) {
+    public ClientHandler(MyServer myServer, Socket socket) {
         try {
             this.myServer = myServer;
-            this.socket = myServer.getSocket();
+            this.socket = socket;
             this.in = new DataInputStream(socket.getInputStream());
             this.out = new DataOutputStream(socket.getOutputStream());
             this.name = "";
+
+            new Thread(() -> {
+                final long beginWaiting = System.currentTimeMillis();
+                while (!isAuthorize & System.currentTimeMillis() - beginWaiting < SECONDS_TO_WAIT_AUTH*1000){
+                    try {
+                        Thread.sleep(500);
+                        System.out.println(System.currentTimeMillis());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                if (!isAuthorize) {
+                    sendMsg("Вы отключены от сервера. Для новой попытки входа, перезапустите приложение.");
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+
             new Thread(() -> {
                 try {
                     while (true) { // цикл авторизации
@@ -45,6 +69,7 @@ public class ClientHandler {
                                     name = nick;
                                     myServer.broadcastMsg(name + newUserNotification);
                                     myServer.subscribe(this);
+                                    this.isAuthorize = true;
                                     break;
                                 } else {
                                     sendMsg(nickIsBusyMessage);
@@ -59,10 +84,9 @@ public class ClientHandler {
                         System.out.printf(incomingMessageTemplate, name, message);
                         if (message.equals(Contract.END_COMMAND)) break;
                         if (message.matches("(\\/w\\s+)(\\w+\\s+)(\\w+.*\\s*)+")) {
-                            final String[] split = message.split("\\s+",3);
+                            final String[] split = message.split("\\s+", 3);
                             myServer.privateMessage(split[1], split[2], name);
-                        }
-                        else myServer.broadcastMsg(name + ": " + message);
+                        } else myServer.broadcastMsg(name + ": " + message);
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -79,6 +103,7 @@ public class ClientHandler {
         } catch (IOException e) {
             throw new RuntimeException("Проблемы при создании обработчика клиента");
         }
+
     }
 
     public void sendMsg(String msg) {
